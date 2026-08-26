@@ -11,7 +11,6 @@ extern at_get_size:proc
 extern at_mem_copy:proc
 extern at_lookup_file:proc
 extern at_set_team_id:proc
-extern at_force_menu_away:proc
 extern at_set_settings:proc
 extern at_trophy_check:proc
 extern at_context_reset:proc
@@ -162,48 +161,6 @@ done:   add     rsp,40h
         ret
 
 at_set_team_id_hk endp
-
-at_force_menu_away_hk proc
-        mov     rax,[rdi+20h]
-        ; Preserve every volatile integer register, flags, and XMM register.
-        ; PES uses this routine during startup, so the hook must behave exactly
-        ; like the two original MOV instructions except for returned RAX.
-        pushfq
-        push    rcx
-        push    rdx
-        push    r8
-        push    r9
-        push    r10
-        push    r11
-        sub     rsp,80h
-        movdqu  [rsp+20h],xmm0
-        movdqu  [rsp+30h],xmm1
-        movdqu  [rsp+40h],xmm2
-        movdqu  [rsp+50h],xmm3
-        movdqu  [rsp+60h],xmm4
-        movdqu  [rsp+70h],xmm5
-        mov     rcx,rax
-        call    at_force_menu_away
-        movdqu  xmm0,[rsp+20h]
-        movdqu  xmm1,[rsp+30h]
-        movdqu  xmm2,[rsp+40h]
-        movdqu  xmm3,[rsp+50h]
-        movdqu  xmm4,[rsp+60h]
-        movdqu  xmm5,[rsp+70h]
-        add     rsp,80h
-        pop     r11
-        pop     r10
-        pop     r9
-        pop     r8
-        pop     rdx
-        pop     rcx
-        popfq
-        mov     [rbx+20h],rax
-        ; The absolute 64-bit hook occupies 13 bytes and also replaces the
-        ; following original instruction, so execute it here before returning.
-        mov     rbx,[rsp+40h]
-        ret
-at_force_menu_away_hk endp
 
 ;0000000150E94EB3 | 48 8B 82 98 00 00 00               | mov rax,qword ptr ds:[rdx+98]        |
 ;0000000150E94EBA | 48 89 81 98 00 00 00               | mov qword ptr ds:[rcx+98],rax        |

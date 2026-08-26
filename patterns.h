@@ -161,21 +161,6 @@ static BYTE pattern_set_team_id[15] =
     //"\x4c\x01\xc1";
 static int offs_set_team_id = -8;
 
-/*
-PES2021.exe+14BFFAA. The short 13-byte form also occurs at +E55D4A,
-so include the full epilogue to make this signature specific.
-Menu selection: low DWORD = Home, high DWORD = Away.
-*/
-static BYTE pattern_force_menu_away[] =
-    "\x48\x8b\x47\x20"
-    "\x48\x89\x43\x20"
-    "\x48\x8b\x5c\x24\x40"
-    "\x48\x83\xc4\x30"
-    "\x5f"
-    "\xc3"
-    "\xcc\xcc";
-static int offs_force_menu_away = 0;
-
 static BYTE pattern_set_team_id_head[2] =
     "\x52"; // push rdx
 

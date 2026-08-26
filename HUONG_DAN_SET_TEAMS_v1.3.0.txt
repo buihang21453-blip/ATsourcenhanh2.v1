@@ -1,0 +1,40 @@
+PES ARENA AT v1.3.0 - AOB INJECT + VERIFY
+==========================================
+
+MUC TIEU
+- Chen Home/Away ngay sau lenh PES ghi cap doi bang AOB Injection Copy.
+- Chi ghi mot lan sau khi nguoi dung ARM.
+- Luu cap doi cu, dem so lan hook chay va dung set_teams de xac minh.
+
+CAU HINH: at/set_teams.ini
+enabled = 1
+home = 101
+away = 102
+mode = aob_inject_verify
+
+CACH TEST
+1. Tat tat ca script Cheat Engine dang ep doi.
+2. Chay AT.exe va mo PES2021.exe.
+3. Mo man hinh chon lai doi.
+4. Bam ~ de mo bang AT.
+5. Bam phim so 1 de ARM.
+6. Di chuyen Home hoac Away dung mot lan.
+7. Xem menu, sau do bam xac nhan va xem PES confirmed.
+
+LOG CAN GUI LAI
+- SET TEAMS v1.3.0 AOB_INJECT_READY
+- SET TEAMS: ARMED
+- injected: ... -> ... (hits=...)
+- SET TEAMS VERIFY: PES confirmed ...
+
+AN TOAN
+- Khong hook rieng lenh 4 byte.
+- Sao chep tron nhom lenh khoi phuc RBX/RSP cua PES.
+- Khong PUSH truoc khi chay nhom lenh goc.
+- Moi lan bam so 1 chi cho chen dung mot lan.
+- AOB khong khop thi chi ghi log, khong sua bo nho.
+
+Y NGHIA
+- hits tang va PES confirmed dung: AOB nay du de lam loi ep doi.
+- hits tang nhung menu khong doi: day la ban sao trung gian; can noi hook set_team_id.
+- menu doi nhung kit sai: can dua yeu cau vao TEAM_INFO truoc hook kit.
