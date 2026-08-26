@@ -199,6 +199,9 @@ at_force_menu_away_hk proc
         pop     rcx
         popfq
         mov     [rbx+20h],rax
+        ; The absolute 64-bit hook occupies 13 bytes and also replaces the
+        ; following original instruction, so execute it here before returning.
+        mov     rbx,[rsp+40h]
         ret
 at_force_menu_away_hk endp
 

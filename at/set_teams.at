@@ -57,7 +57,7 @@ end
 function m.overlay_on(ctx)
     read_request()
     return string.format(
-        "PES ARENA MENU AWAY v1.2.1\nCurrent: %d vs %d\nAway target: %d\nStatus: %s",
+        "PES ARENA MENU AWAY v1.2.2\nCurrent: %d vs %d\nAway target: %d\nStatus: %s",
         current_home, current_away, forced_away, status)
 end
 
@@ -66,7 +66,7 @@ function m.init(ctx)
     read_request()
     ctx.register("set_teams", m.set_teams)
     ctx.register("overlay_on", m.overlay_on)
-    log("PES Arena Menu Away v1.2.1 loaded")
+    log("PES Arena Menu Away v1.2.2 loaded")
 end
 
 return m

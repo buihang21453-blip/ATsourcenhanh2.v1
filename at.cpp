@@ -7763,8 +7763,12 @@ bool hook_if_all_found() {
                     _menu_away_completed = 0;
                     logu_("MENU AWAY HOOK ARMED: target=%u, address=%p\n",
                         target, _config->_hp_at_force_menu_away);
-                    hook_call_point(_config->_hp_at_force_menu_away,
-                        (BYTE*)at_force_menu_away_hk, 0, 3);
+                    // Use AT's absolute 64-bit hook. A rel32 CALL can overflow
+                    // when at.dll is loaded more than 2 GB away from PES2021.exe.
+                    // 12-byte call + 1 NOP replaces exactly 13 bytes:
+                    // mov rax,[rdi+20]; mov [rbx+20],rax; mov rbx,[rsp+40].
+                    hook_call(_config->_hp_at_force_menu_away,
+                        (BYTE*)at_force_menu_away_hk, 1);
                 }
                 else {
                     logu_("MENU AWAY HOOK DISABLED: enabled=%d, target=%u\n",
