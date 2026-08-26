@@ -1,0 +1,72 @@
+local m = {}
+
+local config_path
+local enabled = false
+local forced_away = 0
+local current_home = 0
+local current_away = 0
+local status = "waiting"
+
+local function trim(s)
+    return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function read_request()
+    local file = io.open(config_path, "r")
+    if not file then
+        enabled = false
+        status = "set_teams.ini not found"
+        return false
+    end
+
+    local values = {}
+    for line in file:lines() do
+        line = line:gsub("[;#].*$", "")
+        local key, value = line:match("^%s*([%w_]+)%s*=%s*(.-)%s*$")
+        if key and value then
+            values[key:lower()] = trim(value)
+        end
+    end
+    file:close()
+
+    enabled = tonumber(values.enabled or "0") == 1
+    forced_away = tonumber(values.away or "0") or 0
+
+    if not enabled then
+        status = "disabled"
+        return false
+    end
+    if forced_away < 1 or forced_away > 0x1ffff then
+        status = "invalid team id"
+        return false
+    end
+
+    status = string.format("Away-only target %d", forced_away)
+    return true
+end
+
+function m.set_teams(ctx, home, away)
+    current_home = home
+    current_away = away
+
+    read_request()
+    log(string.format("SET TEAMS OBSERVE ONLY: %d vs %d (%s)",
+        home, away, status))
+end
+
+function m.overlay_on(ctx)
+    read_request()
+    return string.format(
+        "PES ARENA MENU AWAY v1.2.1\nCurrent: %d vs %d\nAway target: %d\nStatus: %s",
+        current_home, current_away, forced_away, status)
+end
+
+function m.init(ctx)
+    config_path = ctx.sider_dir .. "at\\set_teams.ini"
+    read_request()
+    ctx.register("set_teams", m.set_teams)
+    ctx.register("overlay_on", m.overlay_on)
+    log("PES Arena Menu Away v1.2.1 loaded")
+end
+
+return m
