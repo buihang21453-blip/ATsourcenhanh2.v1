@@ -7758,11 +7758,21 @@ bool hook_if_all_found() {
                 request_ini[MAX_PATH - 1] = L'\0';
                 int enabled = GetPrivateProfileIntW(L"set_teams", L"enabled", 0, request_ini);
                 DWORD target = (DWORD)GetPrivateProfileIntW(L"set_teams", L"away", 0, request_ini);
-                if (enabled && target >= 1 && target <= 0x1ffff) {
+                BYTE *exe_base = (BYTE*)GetModuleHandle(NULL);
+                SIZE_T menu_hook_rva = _config->_hp_at_force_menu_away - exe_base;
+                const SIZE_T expected_menu_hook_rva = 0x14bffaa;
+
+                if (menu_hook_rva != expected_menu_hook_rva) {
+                    // Fail closed: never patch a merely similar copy routine.
+                    // This prevents the v1/v2 crash at incorrect RVA E55D4A.
+                    logu_("MENU AWAY HOOK REJECTED: wrong RVA=%p, expected=%p\n",
+                        (void*)menu_hook_rva, (void*)expected_menu_hook_rva);
+                }
+                else if (enabled && target >= 1 && target <= 0x1ffff) {
                     _menu_away_target = target;
                     _menu_away_completed = 0;
-                    logu_("MENU AWAY HOOK ARMED: target=%u, address=%p\n",
-                        target, _config->_hp_at_force_menu_away);
+                    logu_("MENU AWAY HOOK V1.3.0 VERIFIED AND ARMED: target=%u, address=%p, RVA=%p\n",
+                        target, _config->_hp_at_force_menu_away, (void*)menu_hook_rva);
                     // Use AT's absolute 64-bit hook. A rel32 CALL can overflow
                     // when at.dll is loaded more than 2 GB away from PES2021.exe.
                     // 12-byte call + 1 NOP replaces exactly 13 bytes:
