@@ -1,0 +1,39 @@
+PES ARENA - NHANH 1 SET TEAM v1.3.1
+SUA HOOK AOB MOI VA DONG BO DONG GOI
+
+CAC FILE CAN THAY:
+1. at\set_teams.at
+2. at\set_teams.ini
+3. MAKE_RELEASE.cmd
+4. .github\workflows\build-at.yml
+5. installer\AT_Setup.iss
+6. HUONG_DAN_NHANH1_SETTEAM_v1.3.1.txt
+
+CACH THU:
+1. Chep cac file vao dung duong dan trong source AT.
+2. Mo at\set_teams.ini, dat Home/Away bang Team ID thap phan.
+3. Dat enabled = 1.
+4. Build lai at.dll/AT.exe va chay AT.
+5. Da xong mot tran, chon lai doi. PES phai hien san dung hai doi trong INI.
+6. Nguoi choi chi bam xac nhan.
+
+DAU HIEU DUNG TRONG LOG:
+NHANH1 SET TEAM v1.3.1 HOOK_AOB_MOI_SAN_SANG
+
+AOB MOI:
+48 8B 47 20 48 89 45 20 48 8B 43 F8
+
+CAP TEAM ID TRONG RAX:
+- 32-bit thap: Home
+- 32-bit cao: Away
+
+VI DU CE DA GUI:
+RAX = 000000650000006B
+Home = 0x6B = 107
+Away = 0x65 = 101
+
+AN TOAN:
+- Hook chi dung RAX nhu lenh goc; khong push/pop, khong thay doi stack, R10/R11.
+- Code cave tai hien du 3 lenh goc.
+- enabled=0 se cho PES dung cap doi goc.
+- Neu log bao khong tim thay AOB, module khong ghi vao dia chi bat ky.

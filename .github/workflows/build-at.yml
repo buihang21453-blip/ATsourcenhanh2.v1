@@ -52,16 +52,13 @@ jobs:
             if exist at\at_tracker.at copy /y at\at_tracker.at release\at\at_tracker.at
           )
 
-      - name: Create Release ZIP
-        shell: powershell
-        run: |
-          Compress-Archive -Path release\* -DestinationPath PES_Arena_AT_v1.2.1_MenuPreselect.zip -Force
-
-      - name: Upload Release ZIP
+      # Upload truc tiep thu muc release. GitHub se tao dung mot ZIP tai xuong,
+      # khong con tinh trang ZIP long trong ZIP.
+      - name: Upload Release files
         uses: actions/upload-artifact@v4
         with:
-          name: PES_Arena_AT_v1.2.1_MenuPreselect_Release
-          path: PES_Arena_AT_v1.2.1_MenuPreselect.zip
+          name: Nhanh1_SetTeam_v1.3.1_SuaHookAOB_Moi_DongBoDongGoi
+          path: release\**
           if-no-files-found: error
 
       - name: Install Inno Setup
@@ -77,6 +74,6 @@ jobs:
       - name: Upload Setup EXE
         uses: actions/upload-artifact@v4
         with:
-          name: PES_Arena_AT_v1.2.1_MenuPreselect_Setup
-          path: installer\output\PES_Arena_AT_v1.2.1_MenuPreselect_Setup.exe
+          name: Nhanh1_SetTeam_v1.3.1_Setup
+          path: installer\output\Nhanh1_SetTeam_v1.3.1_Setup.exe
           if-no-files-found: error

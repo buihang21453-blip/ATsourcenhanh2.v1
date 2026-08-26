@@ -21,16 +21,17 @@ copy /y toggle.wav "%OUT%\toggle.wav" >nul
 copy /y at\at_tracker.at "%OUT%\at\at_tracker.at" >nul
 copy /y at\set_teams.at "%OUT%\at\set_teams.at" >nul
 copy /y at\set_teams.ini "%OUT%\at\set_teams.ini" >nul
-copy /y HUONG_DAN_SET_TEAMS_v1.3.0.txt "%OUT%\HUONG_DAN_SET_TEAMS_v1.3.0.txt" >nul
+copy /y HUONG_DAN_NHANH1_SETTEAM_v1.3.1.txt "%OUT%\HUONG_DAN_NHANH1_SETTEAM_v1.3.1.txt" >nul
 
-> "%OUT%\HUONG_DAN.txt" echo PES ARENA AT v1.3.0 - AOB Inject + Verify
+> "%OUT%\HUONG_DAN.txt" echo PES ARENA - NHANH 1 SET TEAM v1.3.1
 >>"%OUT%\HUONG_DAN.txt" echo.
 >>"%OUT%\HUONG_DAN.txt" echo 1. Dat thu muc AT o noi co quyen ghi file.
 >>"%OUT%\HUONG_DAN.txt" echo 2. Chay AT.exe.
 >>"%OUT%\HUONG_DAN.txt" echo 3. Mo PES2021.exe neu AT chua tu mo game.
 >>"%OUT%\HUONG_DAN.txt" echo 4. Ket qua tracker duoc luu tai at\auto_score_state.txt.
 >>"%OUT%\HUONG_DAN.txt" echo 5. Sua at\set_teams.ini de dat Home va Away Team ID.
->>"%OUT%\HUONG_DAN.txt" echo 6. Trong bang AT bam so 1 de ARM, roi di chuyen doi mot lan.
+>>"%OUT%\HUONG_DAN.txt" echo 6. enabled=1 de ep san Home/Away bang Hook AOB moi; nguoi choi chi bam xac nhan.
+>>"%OUT%\HUONG_DAN.txt" echo 7. Log thanh cong phai co: NHANH1 SET TEAM v1.3.1 HOOK_AOB_MOI_SAN_SANG.
 >>"%OUT%\HUONG_DAN.txt" echo.
 >>"%OUT%\HUONG_DAN.txt" echo Trang thai: MATCH_END, MATCH_ABORT, TEAM_RESELECT; GAME_EXIT se duoc them o watcher desktop.
 

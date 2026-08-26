@@ -1,120 +1,158 @@
-local m = { version = "1.3.0" }
+local m = { version = "1.3.1" }
 local config_path
-local enabled, installed, armed = false, false, false
-local forced_home, forced_away, current_home, current_away = 0, 0, 0, 0
-local status, control = "waiting for menu", nil
-local CTRL_ARMED, CTRL_HITS, CTRL_FORCED, CTRL_ORIGINAL = 0, 4, 8, 16
+local enabled = false
+local forced_home, forced_away = 0, 0
+local current_home, current_away = 0, 0
+local status = "dang khoi tao"
+local control_slot
+local hook_addr
+local installed = false
 
-local function trim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
+local AOB_SET_TEAM_PAIR =
+    "\x48\x8b\x47\x20" ..
+    "\x48\x89\x45\x20" ..
+    "\x48\x8b\x43\xf8"
+
+local function trim(s)
+    return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
 
 local function find_config(ctx)
-    local candidates = { ".\\at\\set_teams.ini",
+    local candidates = {
+        ".\\at\\set_teams.ini",
         ctx.at_dir and (ctx.at_dir .. "at\\set_teams.ini") or nil,
-        ctx.at_dir and (ctx.at_dir .. "\\at\\set_teams.ini") or nil }
+        ctx.at_dir and (ctx.at_dir .. "\\at\\set_teams.ini") or nil,
+    }
     for _, path in ipairs(candidates) do
-        if path then local f = io.open(path, "r"); if f then f:close(); return path end end
+        if path then
+            local file = io.open(path, "r")
+            if file then file:close(); return path end
+        end
     end
     return ".\\at\\set_teams.ini"
 end
 
 local function read_request()
-    local f = io.open(config_path, "r")
-    if not f then enabled=false; status="set_teams.ini not found"; return false end
-    local v = {}
-    for line in f:lines() do
+    local file = io.open(config_path, "r")
+    if not file then
+        enabled = false
+        status = "khong tim thay set_teams.ini"
+        return false
+    end
+    local values = {}
+    for line in file:lines() do
         line = line:gsub("[;#].*$", "")
-        local k,x = line:match("^%s*([%w_]+)%s*=%s*(.-)%s*$")
-        if k and x then v[k:lower()] = trim(x) end
+        local key, value = line:match("^%s*([%w_]+)%s*=%s*(.-)%s*$")
+        if key and value then values[key:lower()] = trim(value) end
     end
-    f:close()
-    enabled = tonumber(v.enabled or "0") == 1
-    forced_home, forced_away = tonumber(v.home or "0") or 0, tonumber(v.away or "0") or 0
-    if not enabled then status="disabled"; return false end
-    if forced_home < 1 or forced_home > 0x1ffff or forced_away < 1 or forced_away > 0x1ffff then
-        status="invalid team id"; return false
+    file:close()
+    enabled = tonumber(values.enabled or "0") == 1
+    forced_home = tonumber(values.home or "0") or 0
+    forced_away = tonumber(values.away or "0") or 0
+    if not enabled then status = "da tat trong INI"; return false end
+    if forced_home < 1 or forced_home > 0x1ffff or
+       forced_away < 1 or forced_away > 0x1ffff then
+        status = "Team ID khong hop le"
+        enabled = false
+        return false
     end
     return true
 end
 
-local function abs_jump(address)
-    return "\xff\x25\x00\x00\x00\x00" .. memory.pack("u64", address)
+local function write_control_slot()
+    if not control_slot then return end
+    local active = enabled and 1 or 0
+    local block = string.char(active) .. string.rep("\0", 7) ..
+        memory.pack("u32", forced_home) .. memory.pack("u32", forced_away)
+    memory.write(control_slot, block)
 end
 
-local function install_injection_hook()
-    local pattern = "\x48\x8b\x47\x20\x48\x89\x43\x20\x48\x8b\x5c\x24\x40\x48\x83\xc4\x30"
-    local hook_addr = memory.search_process(pattern)
-    if not hook_addr then status="AOB menu pair not found"; log("SET TEAMS ERROR: "..status); return false end
-    control = memory.allocate_codecave(24)
-    memory.write(control, string.rep("\x00", 24))
-    local cave = memory.allocate_codecave(192)
-    -- Do not PUSH before the original group: [rsp+40] and add rsp,30 require the original stack.
+local function install_set_team_hook()
+    hook_addr = memory.search_process(AOB_SET_TEAM_PAIR)
+    if not hook_addr then
+        status = "khong tim thay AOB Team ID moi"
+        log("NHANH1 SET TEAM v1.3.1 LOI: " .. status)
+        return false
+    end
+    control_slot = memory.allocate_codecave(16)
+    local cave = memory.allocate_codecave(96)
+    if not control_slot or not cave then
+        status = "khong cap phat duoc code cave"
+        log("NHANH1 SET TEAM v1.3.1 LOI: " .. status)
+        return false
+    end
+    write_control_slot()
+
+    -- Chi dung RAX (lenh goc cung ghi de RAX), khong dung stack va khong
+    -- pha R10/R11. Tai hien day du 3 lenh goc truoc khi quay ve hook+12.
     local code =
-        "\x4c\x8d\x5b\x20" ..                         -- lea r11,[rbx+20]
-        pattern ..                                       -- original PES instructions
-        "\x9c\x50" ..                                  -- pushfq; push rax
-        "\x49\xba" .. memory.pack("u64", control) ..  -- mov r10,control
-        "\x41\x83\x3a\x01\x75\x19" ..              -- if armed != 1: skip
-        "\x49\x8b\x03\x49\x89\x42\x10" ..        -- save original pair
-        "\x49\x8b\x42\x08\x49\x89\x03" ..        -- write requested pair
-        "\x41\xff\x42\x04" ..                        -- hits++
-        "\x41\xc7\x02\x00\x00\x00\x00" ..        -- disarm
-        "\x58\x9d" .. abs_jump(hook_addr + #pattern)
+        "\x48\xb8" .. memory.pack("u64", control_slot) .. -- mov rax,control
+        "\x80\x38\x00" ..                                -- cmp byte [rax],0
+        "\x74\x06" ..                                   -- je original_pair
+        "\x48\x8b\x40\x08" ..                           -- mov rax,[rax+8]
+        "\xeb\x04" ..                                   -- jmp store_pair
+        "\x48\x8b\x47\x20" ..                           -- mov rax,[rdi+20]
+        "\x48\x89\x45\x20" ..                           -- mov [rbp+20],rax
+        "\x48\x8b\x43\xf8" ..                           -- mov rax,[rbx-08]
+        "\xff\x25\x00\x00\x00\x00" .. memory.pack("u64", hook_addr + 12)
     memory.write(cave, code)
-    memory.write(hook_addr, abs_jump(cave) .. "\x90\x90\x90")
-    installed=true; status="AOB hook ready; press 1 to arm"
-    log(string.format("SET TEAMS v1.3.0 AOB_INJECT_READY hook=%s control=%s cave=%s",
-        memory.hex(hook_addr), memory.hex(control), memory.hex(cave)))
+
+    -- AOB dai 12 byte: mov rax,imm64 + jmp rax vua dung 12 byte.
+    local trampoline = "\x48\xb8" .. memory.pack("u64", cave) .. "\xff\xe0"
+    memory.write(hook_addr, trampoline)
+    installed = true
+    status = enabled and
+        string.format("san sang ep %d vs %d", forced_home, forced_away) or
+        "hook san sang, INI dang tat"
+    log(string.format(
+        "NHANH1 SET TEAM v1.3.1 HOOK_AOB_MOI_SAN_SANG hook=%s control=%s cave=%s Home=%d Away=%d enabled=%s",
+        memory.hex(hook_addr), memory.hex(control_slot), memory.hex(cave),
+        forced_home, forced_away, tostring(enabled)))
     return true
 end
 
-local function read_u32(address)
-    local ok,raw=pcall(memory.read,address,4)
-    if not ok or not raw or #raw~=4 then return nil end
-    return memory.unpack("u32",raw)
+local function refresh_request()
+    read_request()
+    write_control_slot()
+    if installed then
+        status = enabled and
+            string.format("dang ep Menu: %d vs %d", forced_home, forced_away) or
+            "da tat trong INI"
+    end
 end
 
-local function read_pair(address)
-    local ok,raw=pcall(memory.read,address,8)
-    if not ok or not raw or #raw~=8 then return nil,nil end
-    return memory.unpack("u32",raw:sub(1,4)), memory.unpack("u32",raw:sub(5,8))
+function m.set_teams(ctx, home, away)
+    current_home, current_away = home, away
+    local matched = enabled and home == forced_home and away == forced_away
+    status = matched and
+        string.format("PES da xac nhan %d vs %d", home, away) or
+        string.format("PES hien tai %d vs %d", home, away)
+    log("NHANH1 SET TEAM v1.3.1: " .. status)
 end
 
-local function refresh_status()
-    if not installed or not control then return end
-    local hits,flag=read_u32(control+CTRL_HITS) or 0,read_u32(control+CTRL_ARMED) or 0
-    local oh,oa=read_pair(control+CTRL_ORIGINAL); armed=flag==1
-    if hits>0 and oh and oa then
-        status=string.format("injected: %d/%d -> %d/%d (hits=%d)",oh,oa,forced_home,forced_away,hits)
-    elseif armed then status="ARMED: move a team cursor once" end
+function m.key_down(ctx, vkey)
+    refresh_request()
 end
 
-local function arm_request()
-    if not installed or not control or not read_request() then return false end
-    memory.write(control+CTRL_FORCED,memory.pack("u32",forced_home)..memory.pack("u32",forced_away))
-    memory.write(control+CTRL_ARMED,memory.pack("u32",1))
-    armed=true; status=string.format("ARMED %d vs %d",forced_home,forced_away)
-    log("SET TEAMS: "..status.."; move a team cursor once")
-    return true
-end
-
-function m.set_teams(ctx,home,away)
-    current_home,current_away=home,away; refresh_status()
-    log(string.format("SET TEAMS VERIFY: PES confirmed %d vs %d",home,away))
-    if home==forced_home and away==forced_away then status=string.format("VERIFIED: %d vs %d",home,away) end
-end
-function m.key_down(ctx,vkey)
-    if vkey==0x31 or vkey==0x61 then arm_request() else refresh_status() end
-end
-function m.gamepad_input(ctx,inputs) refresh_status() end
 function m.overlay_on(ctx)
-    refresh_status()
-    return string.format("PES ARENA SET TEAMS v1.3.0 - AOB INJECT + VERIFY\nPES confirmed: %d vs %d\nRequested: %d vs %d\nStatus: %s\nPress 1 to ARM, then move either team cursor once.",current_home,current_away,forced_home,forced_away,status)
+    refresh_request()
+    return string.format(
+        "PES ARENA - NHANH 1 SET TEAM v1.3.1\n" ..
+        "PES xac nhan: %d vs %d\n" ..
+        "Muc tieu Menu: %d vs %d\n" ..
+        "Trang thai: %s",
+        current_home, current_away, forced_home, forced_away, status)
 end
+
 function m.init(ctx)
-    config_path=find_config(ctx); log("SET TEAMS CONFIG: "..config_path)
-    read_request(); install_injection_hook()
-    ctx.register("set_teams",m.set_teams); ctx.register("key_down",m.key_down)
-    ctx.register("gamepad_input",m.gamepad_input); ctx.register("overlay_on",m.overlay_on)
-    log("PES Arena Set Teams v1.3.0 loaded (one-shot AOB injection)")
+    config_path = find_config(ctx)
+    log("NHANH1 SET TEAM v1.3.1 CONFIG: " .. config_path)
+    read_request()
+    install_set_team_hook()
+    ctx.register("set_teams", m.set_teams)
+    ctx.register("key_down", m.key_down)
+    ctx.register("overlay_on", m.overlay_on)
+    log("NHANH1 SET TEAM v1.3.1 DA NAP")
 end
+
 return m

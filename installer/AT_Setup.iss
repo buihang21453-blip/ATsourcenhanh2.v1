@@ -1,5 +1,5 @@
 #define MyAppName "PES Arena AT"
-#define MyAppVersion "1.3.0"
+#define MyAppVersion "1.3.1"
 #define MyAppPublisher "PES Arena"
 #define MyAppExeName "AT.exe"
 
@@ -11,7 +11,7 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\PES Arena AT
 DefaultGroupName=PES Arena AT
 OutputDir=output
-OutputBaseFilename=PES_Arena_AT_v1.3.0_AOB_Inject_Verify_Setup
+OutputBaseFilename=Nhanh1_SetTeam_v1.3.1_Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -28,6 +28,7 @@ Source: "..\release\at.ini"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\release\toggle.wav"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\release\at\*"; DestDir: "{app}\at"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "..\release\HUONG_DAN.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\release\HUONG_DAN_NHANH1_SETTEAM_v1.3.1.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\PES Arena AT"; Filename: "{app}\AT.exe"; WorkingDir: "{app}"
