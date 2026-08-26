@@ -1,0 +1,34 @@
+PES ARENA - NHANH 2 SET TEAM v1.3.2
+CORE HOOK SET TEAM ID - BAN THU NGHIEM
+
+MUC TIEU:
+Ep Home/Away ngay tai hook loi at_set_team_id, noi log at(9).log cho thay
+PES thuc su dat Team ID va chuyen ID sang he thong kit.
+
+CACH THU:
+1. Chen cac file update vao dung vi tri trong source Nhanh 2.
+2. Dua len GitHub va cho Actions build xong.
+3. Tai artifact Nhanh2_SetTeam_v1.3.2_CoreHook_SetTeamID.
+4. Mo at\set_teams.ini va dat Home/Away bang Team ID thap phan.
+5. Dat enabled = 1, chay AT va PES.
+6. Chon lai doi va kiem tra doi, ten, logo, cau thu va kit.
+
+LOG CAN GUI LAI:
+NHANH2 SET TEAM v1.3.2 CORE_FORCE side=HOME
+NHANH2 SET TEAM v1.3.2 CORE_FORCE side=AWAY
+NHANH2 SET TEAM v1.3.2 VERIFY
+
+Y NGHIA:
+- CORE_FORCE cho biet loi AT da thay Team ID truoc khi PES chay tiep.
+- VERIFY THANH CONG cho biet event set_teams da doc lai dung ca hai ID.
+- Neu ID dung nhung ten/cau thu sai, hook nay moi chi doi ID; can can thiep
+  som hon vao buoc PES nap day du du lieu doi.
+
+CAC FILE THAY DOI:
+1. at.cpp
+2. at\set_teams.at
+3. at\set_teams.ini
+4. MAKE_RELEASE.cmd
+5. .github\workflows\build-at.yml
+6. installer\AT_Setup.iss
+7. HUONG_DAN_NHANH2_SETTEAM_v1.3.2.txt

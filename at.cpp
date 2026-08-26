@@ -5070,13 +5070,52 @@ DWORD decode_team_id(DWORD team_id_encoded)
     return (team_id_encoded >> 0x0e) & 0x1ffff;
 }
 
+static DWORD encode_team_id(DWORD original_encoded, DWORD team_id)
+{
+    // PES stores Team ID in bits 14..30. Preserve the remaining flags/bits.
+    return (original_encoded & 0x80003fff) | ((team_id & 0x1ffff) << 0x0e);
+}
+
+static bool get_forced_team_ids(DWORD *home, DWORD *away)
+{
+    wstring ini_path(at_dir);
+    if (!ini_path.empty() && ini_path.back() != L'\\' && ini_path.back() != L'/') {
+        ini_path += L"\\";
+    }
+    ini_path += L"at\\set_teams.ini";
+
+    bool enabled = GetPrivateProfileInt(
+        L"set_teams", L"enabled", 0, ini_path.c_str()) == 1;
+    DWORD requested_home = GetPrivateProfileInt(
+        L"set_teams", L"home", 0, ini_path.c_str());
+    DWORD requested_away = GetPrivateProfileInt(
+        L"set_teams", L"away", 0, ini_path.c_str());
+
+    if (!enabled || requested_home < 1 || requested_home > 0x1ffff ||
+        requested_away < 1 || requested_away > 0x1ffff) {
+        return false;
+    }
+    *home = requested_home;
+    *away = requested_away;
+    return true;
+}
+
 void at_set_team_id(DWORD *dest, TEAM_INFO_STRUCT *team_info, DWORD offset)
 {
     bool is_home = (offset == 0);
-    DWORD *team_id_encoded = &(team_info->team_id_encoded);
-    if (!dest || !team_id_encoded) {
+    if (!dest || !team_info) {
         // safety check
         return;
+    }
+    DWORD *team_id_encoded = &(team_info->team_id_encoded);
+    DWORD original_id = decode_team_id(*team_id_encoded);
+    DWORD forced_home = 0;
+    DWORD forced_away = 0;
+    if (get_forced_team_ids(&forced_home, &forced_away)) {
+        DWORD requested_id = is_home ? forced_home : forced_away;
+        *team_id_encoded = encode_team_id(*team_id_encoded, requested_id);
+        logu_("NHANH2 SET TEAM v1.3.2 CORE_FORCE side=%s original=%d requested=%d encoded=0x%08x\n",
+            is_home ? "HOME" : "AWAY", original_id, requested_id, *team_id_encoded);
     }
 
     if (is_home) {

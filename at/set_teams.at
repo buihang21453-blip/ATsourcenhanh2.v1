@@ -1,17 +1,9 @@
-local m = { version = "1.3.1" }
+local m = { version = "1.3.2" }
 local config_path
 local enabled = false
 local forced_home, forced_away = 0, 0
 local current_home, current_away = 0, 0
-local status = "dang khoi tao"
-local control_slot
-local hook_addr
-local installed = false
-
-local AOB_SET_TEAM_PAIR =
-    "\x48\x8b\x47\x20" ..
-    "\x48\x89\x45\x20" ..
-    "\x48\x8b\x43\xf8"
+local status = "dang cho PES dat doi"
 
 local function trim(s)
     return (s:gsub("^%s+", ""):gsub("%s+$", ""))
@@ -37,7 +29,7 @@ local function read_request()
     if not file then
         enabled = false
         status = "khong tim thay set_teams.ini"
-        return false
+        return
     end
     local values = {}
     for line in file:lines() do
@@ -49,110 +41,37 @@ local function read_request()
     enabled = tonumber(values.enabled or "0") == 1
     forced_home = tonumber(values.home or "0") or 0
     forced_away = tonumber(values.away or "0") or 0
-    if not enabled then status = "da tat trong INI"; return false end
-    if forced_home < 1 or forced_home > 0x1ffff or
-       forced_away < 1 or forced_away > 0x1ffff then
-        status = "Team ID khong hop le"
-        enabled = false
-        return false
-    end
-    return true
-end
-
-local function write_control_slot()
-    if not control_slot then return end
-    local active = enabled and 1 or 0
-    local block = string.char(active) .. string.rep("\0", 7) ..
-        memory.pack("u32", forced_home) .. memory.pack("u32", forced_away)
-    memory.write(control_slot, block)
-end
-
-local function install_set_team_hook()
-    hook_addr = memory.search_process(AOB_SET_TEAM_PAIR)
-    if not hook_addr then
-        status = "khong tim thay AOB Team ID moi"
-        log("NHANH1 SET TEAM v1.3.1 LOI: " .. status)
-        return false
-    end
-    control_slot = memory.allocate_codecave(16)
-    local cave = memory.allocate_codecave(96)
-    if not control_slot or not cave then
-        status = "khong cap phat duoc code cave"
-        log("NHANH1 SET TEAM v1.3.1 LOI: " .. status)
-        return false
-    end
-    write_control_slot()
-
-    -- Chi dung RAX (lenh goc cung ghi de RAX), khong dung stack va khong
-    -- pha R10/R11. Tai hien day du 3 lenh goc truoc khi quay ve hook+12.
-    local code =
-        "\x48\xb8" .. memory.pack("u64", control_slot) .. -- mov rax,control
-        "\x80\x38\x00" ..                                -- cmp byte [rax],0
-        "\x74\x06" ..                                   -- je original_pair
-        "\x48\x8b\x40\x08" ..                           -- mov rax,[rax+8]
-        "\xeb\x04" ..                                   -- jmp store_pair
-        "\x48\x8b\x47\x20" ..                           -- mov rax,[rdi+20]
-        "\x48\x89\x45\x20" ..                           -- mov [rbp+20],rax
-        "\x48\x8b\x43\xf8" ..                           -- mov rax,[rbx-08]
-        "\xff\x25\x00\x00\x00\x00" .. memory.pack("u64", hook_addr + 12)
-    memory.write(cave, code)
-
-    -- AOB dai 12 byte: mov rax,imm64 + jmp rax vua dung 12 byte.
-    local trampoline = "\x48\xb8" .. memory.pack("u64", cave) .. "\xff\xe0"
-    memory.write(hook_addr, trampoline)
-    installed = true
-    status = enabled and
-        string.format("san sang ep %d vs %d", forced_home, forced_away) or
-        "hook san sang, INI dang tat"
-    log(string.format(
-        "NHANH1 SET TEAM v1.3.1 HOOK_AOB_MOI_SAN_SANG hook=%s control=%s cave=%s Home=%d Away=%d enabled=%s",
-        memory.hex(hook_addr), memory.hex(control_slot), memory.hex(cave),
-        forced_home, forced_away, tostring(enabled)))
-    return true
-end
-
-local function refresh_request()
-    read_request()
-    write_control_slot()
-    if installed then
-        status = enabled and
-            string.format("dang ep Menu: %d vs %d", forced_home, forced_away) or
-            "da tat trong INI"
-    end
 end
 
 function m.set_teams(ctx, home, away)
+    read_request()
     current_home, current_away = home, away
-    local matched = enabled and home == forced_home and away == forced_away
-    status = matched and
-        string.format("PES da xac nhan %d vs %d", home, away) or
-        string.format("PES hien tai %d vs %d", home, away)
-    log("NHANH1 SET TEAM v1.3.1: " .. status)
-end
-
-function m.key_down(ctx, vkey)
-    refresh_request()
+    if enabled and home == forced_home and away == forced_away then
+        status = string.format("THANH CONG: PES da xac nhan %d vs %d", home, away)
+    else
+        status = string.format("CHUA KHOP: PES xac nhan %d vs %d", home, away)
+    end
+    log("NHANH2 SET TEAM v1.3.2 VERIFY: " .. status)
 end
 
 function m.overlay_on(ctx)
-    refresh_request()
+    read_request()
     return string.format(
-        "PES ARENA - NHANH 1 SET TEAM v1.3.1\n" ..
+        "PES ARENA - NHANH 2 SET TEAM v1.3.2 CORE HOOK\n" ..
         "PES xac nhan: %d vs %d\n" ..
-        "Muc tieu Menu: %d vs %d\n" ..
+        "Muc tieu: %d vs %d\n" ..
         "Trang thai: %s",
         current_home, current_away, forced_home, forced_away, status)
 end
 
 function m.init(ctx)
     config_path = find_config(ctx)
-    log("NHANH1 SET TEAM v1.3.1 CONFIG: " .. config_path)
     read_request()
-    install_set_team_hook()
     ctx.register("set_teams", m.set_teams)
-    ctx.register("key_down", m.key_down)
     ctx.register("overlay_on", m.overlay_on)
-    log("NHANH1 SET TEAM v1.3.1 DA NAP")
+    log(string.format(
+        "NHANH2 SET TEAM v1.3.2 CORE_HOOK_MODULE_DA_NAP config=%s Home=%d Away=%d enabled=%s",
+        config_path, forced_home, forced_away, tostring(enabled)))
 end
 
 return m
